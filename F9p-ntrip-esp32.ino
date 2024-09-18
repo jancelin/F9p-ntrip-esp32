@@ -1,9 +1,9 @@
 #include <WiFi.h>
 #include "NTRIPClient.h"
 #include <HardwareSerial.h>
+#include <BluetoothSerial.h>
 
-HardwareSerial MySerial(2);
-HardwareSerial Serialrx(1);
+HardwareSerial MySerial(1);
 
 const char* ssid     = "your_ssid";
 const char* password = "your_password";
@@ -18,11 +18,11 @@ char* passwd = "ntrip caster's client password";
 bool sendGGA = true;
 NTRIPClient ntrip_c;
 
-const char* udpAddress = "192.168.1.255";
+const char* udpAddress = "192.168.0.13";
 const int udpPort = 9999;
 
-//Choose which output you want to use. for RS232 set 0 and connect tx F9P directly to RS232 module
-int trans = 1;  // 0 = serial, 1 = udp, 2 = tcp client, 3 = serialrx, 4 = myserial 5 = Bluetooth 
+int trans = 4; 
+// 0 = serial, 1 = udp, 2 = tcp client, 3 = MySerial, 4 = Bluetooth Choose which output you want to use. for RS232 set 0 and connect tx F9P directly to RS232 module
 
 WiFiUDP udp;
 
@@ -44,8 +44,6 @@ void setup() {
     Serial.begin(115200);
     delay(500);
     MySerial.begin(115200, SERIAL_8N1, 16, 17); // serial port to send RTCM to F9P
-    delay(100);
-    Serialrx.begin(115200, SERIAL_8N1, 23, 22);
     delay(100);
     Serial.print("Connecting to ");
     Serial.println(ssid);
@@ -102,8 +100,8 @@ void loop() {
           unsigned long readStartMillis = millis();
           bool ggaFound = false;
           while (millis() - readStartMillis < readDuration && !ggaFound) {
-              while (Serialrx.available()) {
-                  char c = Serialrx.read();
+              while (MySerial.available()) {
+                  char c = MySerial.read();
                   if (c == '\n' || c == '\r') {
                       if (nmeaMessage.startsWith("$GNGGA") || nmeaMessage.startsWith("$GPGGA")) {
                           // Validation du format GGA
@@ -113,7 +111,7 @@ void loop() {
                           }
                           if (numFields == 14) { // 14 virgules attendues dans un message GGA complet
                               ntrip_c.setLastGGA(nmeaMessage);                  // Stocker le dernier message GGA reçu
-                              //Serial.println("Extracted GGA: " + nmeaMessage);  // Log du message GGA extrait
+                              Serial.println("Extracted GGA: " + nmeaMessage);  // Log du message GGA extrait
                               ggaFound = true;                                  // Mettre à jour le drapeau pour arrêter la lecture
                               break;                                            // Sortir de la boucle intérieure
                           }
@@ -143,8 +141,8 @@ void loop() {
         MySerial.print(ch);
     }
 
-    while (Serialrx.available()) {
-        String s = Serialrx.readStringUntil('\n');
+    while (MySerial.available()) {
+        String s = MySerial.readStringUntil('\n');
         switch (trans) {
             case 0:  // serial out
                 Serial.println(s);
@@ -168,13 +166,10 @@ void loop() {
                 }
                 client.stop();
                 break;
-            case 3:  // serialrx out
-                Serialrx.println(s);
-                break;
-            case 4:  // MySerial out
+            case 3:  // MySerial out
                 MySerial.println(s);
                 break;
-            case 5: //BT
+            case 4: //BT
                 SerialBT.println(s);
                 break;
             default:  // mauvaise config
