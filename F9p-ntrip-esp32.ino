@@ -58,7 +58,7 @@ void setup() {
 
     // Initialiser le Bluetooth
     switch (trans) {
-      case 5:
+      case 4:
         if (!SerialBT.begin("rover-gnss")) {
          Serial.println("An error occurred initializing Bluetooth");
         } else {
